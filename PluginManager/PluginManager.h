@@ -1,7 +1,10 @@
 #pragma once
-#pragma comment( lib, "bakkesmod.lib" )
-#include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "./imgui/imgui.h"
+#include "./imgui/CustomImguiModifications.h"
+#include "imguifilebrowser/imfilebrowser.h"
+#pragma comment( lib, "bakkesmod.lib" )
+
+#include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "./bakkesmod/wrappers/PluginManagerWrapper.h"
 #include "bakkesmod\plugin\pluginwindow.h"
 

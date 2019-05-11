@@ -1,0 +1,3 @@
+[submodule "PluginManager/imguifilebrowser"]
+	path = PluginManager/imguifilebrowser
+	url = https://github.com/AirGuanZ/imgui-filebrowser.git
