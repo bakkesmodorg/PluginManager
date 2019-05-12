@@ -111,8 +111,18 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 			}
 			std::filesystem::remove(tempJson + "plugin.json");
 		}
+		else if (member.filename.find(".") == std::string::npos) //It's a folder
+		{
+				std::filesystem::create_directory(fullPath);
+		}
 		else
 		{
+			if (member.filename.substr(member.filename.size() - std::string(".dll").size()).compare(".dll") == 0)
+			{
+				std::string dllName = member.filename.substr(0, member.filename.rfind('.'));
+				dllName = dllName.substr(dllName.rfind('/') + 1);
+				cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
+			}
 			file.extract(member, extractDir);
 		}
 	}
