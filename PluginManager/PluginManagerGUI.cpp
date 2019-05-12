@@ -53,6 +53,7 @@ void PluginManager::Render()
 	if (fileDialog.HasSelected())
 	{
 		//cvarManager->log(.string());
+		cvarManager->executeCommand("writeconfig;");
 		std::string installedPlugin = InstallZip(fileDialog.GetSelected());
 		std::string err = "";
 		auto jsonVal = json::parse(installedPlugin);
@@ -75,7 +76,7 @@ void PluginManager::Render()
 		{
 			cvarManager->log("Error " + err);
 		}
-
+		cvarManager->executeCommand("exec config;");
 		fileDialog.ClearSelected();
 	}
 	ImGui::Button("Install from BakkesPlugins");

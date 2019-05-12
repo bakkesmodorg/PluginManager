@@ -17,7 +17,7 @@ void PluginManager::onLoad()
 {
 	cvarManager->registerNotifier("plugin", std::bind(&PluginManager::OnPluginListUpdated, this, std::placeholders::_1), "plugin command hook for plugin manager", PERMISSION_ALL);
 	OnPluginListUpdated(std::vector<std::string>());
-	fileDialog.SetAcceptableFileType("zip");
+	fileDialog.SetAcceptableFileTypes("zip");
 #ifdef _WIN32
 	
 
