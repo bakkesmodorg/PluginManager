@@ -44,7 +44,14 @@ void PluginManager::Render()
 	ImGui::BeginChild("#PluginsOptions");
 	if (ImGui::Button("Install from ZIP"))
 	{
+		fileDialog.Open();
+	}
+	fileDialog.Display();
 
+	if (fileDialog.HasSelected())
+	{
+		cvarManager->log(fileDialog.GetSelected().string());
+		fileDialog.ClearSelected();
 	}
 	ImGui::Button("Install from BakkesPlugins");
 	ImGui::EndChild();
