@@ -30,6 +30,18 @@ public:
 	*/
 	void OnPluginListUpdated(std::vector<std::string> params);
 
+
+	/*
+	Installing related functions
+	*/
+private:
+public:
+	/*
+	Extracts the plugin, trusts the developer packaged correctly and doesn't overwrite existing file.
+	Returns the contents of plugin.json
+	*/
+	std::string InstallZip(std::filesystem::path path);
+
 	/*
 	GUI stuff, implementation is in PluginManagerGUI.cpp
 	*/

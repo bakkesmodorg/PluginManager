@@ -1,3 +1,6 @@
 [submodule "PluginManager/imguifilebrowser"]
 	path = PluginManager/imguifilebrowser
 	url = https://github.com/AirGuanZ/imgui-filebrowser.git
+[submodule "PluginManager/json"]
+	path = PluginManager/json
+	url = https://github.com/nlohmann/json.git

@@ -1,5 +1,7 @@
 #include "PluginManager.h"
+#include "nlohmann/json.hpp"
 
+using json = nlohmann::json;
 
 void PluginManager::Render()
 {
@@ -50,7 +52,30 @@ void PluginManager::Render()
 
 	if (fileDialog.HasSelected())
 	{
-		cvarManager->log(fileDialog.GetSelected().string());
+		//cvarManager->log(.string());
+		std::string installedPlugin = InstallZip(fileDialog.GetSelected());
+		std::string err = "";
+		auto jsonVal = json::parse(installedPlugin);
+		if (err.size() == 0)
+		{
+			if (jsonVal.is_object())
+			{
+				if (jsonVal.find("dll") != jsonVal.end())
+				{
+					std::string dllName = jsonVal["dll"];
+					if (dllName.substr(dllName.size() - std::string(".dll").size()).compare(".dll") == 0)
+					{
+						dllName = dllName.substr(0, dllName.rfind('.'));
+					}
+					cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
+				}
+			}
+		}
+		else
+		{
+			cvarManager->log("Error " + err);
+		}
+
 		fileDialog.ClearSelected();
 	}
 	ImGui::Button("Install from BakkesPlugins");

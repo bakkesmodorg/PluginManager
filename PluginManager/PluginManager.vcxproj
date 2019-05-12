@@ -97,7 +97,8 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>F:\Bakkesmod\development\BakkesMod-rewrite\BakkesMod Rewrite;C:\Users\Chris\Downloads\miniz-master;./json/include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

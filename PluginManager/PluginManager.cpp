@@ -1,4 +1,10 @@
 #include "PluginManager.h"
+#include <fstream>
+
+//Need to undef these for zip_file
+#undef min
+#undef max
+#include "zip_file.hpp"
 #ifdef _WIN32
 #include <windows.h>
 #include <Shlobj_core.h>
@@ -11,6 +17,7 @@ void PluginManager::onLoad()
 {
 	cvarManager->registerNotifier("plugin", std::bind(&PluginManager::OnPluginListUpdated, this, std::placeholders::_1), "plugin command hook for plugin manager", PERMISSION_ALL);
 	OnPluginListUpdated(std::vector<std::string>());
+
 #ifdef _WIN32
 	WCHAR* path[MAX_PATH] = { 0 };
 	HRESULT hr = SHGetKnownFolderPath(FOLDERID_Downloads, 0, NULL, path);
@@ -50,6 +57,7 @@ void PluginManager::OnPluginListUpdated(std::vector<std::string> params)
 		std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
 		allPlugins[dllNameLower] = pluginEntry;
 	}
+
 #ifdef _WIN32
 	std::string pattern("./bakkesmod/plugins/*.dll");
 	WIN32_FIND_DATA data;
@@ -69,5 +77,44 @@ void PluginManager::OnPluginListUpdated(std::vector<std::string> params)
 		FindClose(hFind);
 	}
 #endif
+
 	allPluginsVectorMutex.unlock();
+}
+
+std::string PluginManager::InstallZip(std::filesystem::path path)
+{
+	std::basic_ifstream<BYTE> fileStr(path, std::ios::binary);
+	std::string jsonResult = "";
+	auto data = std::vector<BYTE>((std::istreambuf_iterator<BYTE>(fileStr)),
+		std::istreambuf_iterator<BYTE>());
+
+	miniz_cpp::zip_file file(data);
+	std::string extractDir = "bakkesmod/";
+	for (auto &member : file.infolist())
+	{
+		std::string fullPath = extractDir + member.filename;
+		if (member.filename.compare("plugin.json") == 0)
+		{
+			std::string tempJson = extractDir + "data/";
+			{
+				file.extract(member, tempJson);
+			}
+			{
+				std::ifstream jsonInput(tempJson + "plugin.json");
+				
+				jsonInput.seekg(0, std::ios::end);
+				jsonResult.reserve(jsonInput.tellg());
+				jsonInput.seekg(0, std::ios::beg);
+
+				jsonResult.assign((std::istreambuf_iterator<char>(jsonInput)),
+					std::istreambuf_iterator<char>());
+			}
+			std::filesystem::remove(tempJson + "plugin.json");
+		}
+		else
+		{
+			file.extract(member, extractDir);
+		}
+	}
+	return jsonResult;
 }
