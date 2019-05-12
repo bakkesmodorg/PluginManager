@@ -49,7 +49,7 @@ private:
 	bool isWindowOpen = false;
 	bool isMinimized = false;
 	std::string menuTitle = "Plugin manager";
-	ImGui::FileBrowser fileDialog = ImGui::FileBrowser(ImGuiFileBrowserFlags_SingleClickDir);
+	ImGui::FileBrowser fileDialog = ImGui::FileBrowser(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_SingleClickDir | ImGuiFileBrowserFlags_SortIgnoreCase);
 public:
 	virtual void Render();
 	virtual std::string GetMenuName();
