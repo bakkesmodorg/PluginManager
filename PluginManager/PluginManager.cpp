@@ -17,8 +17,10 @@ void PluginManager::onLoad()
 {
 	cvarManager->registerNotifier("plugin", std::bind(&PluginManager::OnPluginListUpdated, this, std::placeholders::_1), "plugin command hook for plugin manager", PERMISSION_ALL);
 	OnPluginListUpdated(std::vector<std::string>());
-
+	fileDialog.SetAcceptableFileType("zip");
 #ifdef _WIN32
+	
+
 	WCHAR* path[MAX_PATH] = { 0 };
 	HRESULT hr = SHGetKnownFolderPath(FOLDERID_Downloads, 0, NULL, path);
 
@@ -32,6 +34,7 @@ void PluginManager::onLoad()
 		fileDialog.SetPwd(test);
 	}
 #endif
+
 }
 
 void PluginManager::onUnload()
