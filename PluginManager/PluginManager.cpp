@@ -9,9 +9,21 @@
 #include <windows.h>
 #include <Shlobj_core.h>
 #include <sstream>
+
+#include <curl/curl.h>
+#pragma comment(lib, "libssl.lib")
+#pragma comment(lib, "Wldap32.lib")
+#pragma comment(lib, "Normaliz.lib")
+#pragma comment(lib, "libcurl_a.lib")
 #endif
 
 BAKKESMOD_PLUGIN(PluginManager, "Plugin Manager", "0.1", 0)
+
+size_t WriteCallback(char *contents, size_t size, size_t nmemb, void *userp)
+{
+	((std::string*)userp)->append((char*)contents, size * nmemb);
+	return size * nmemb;
+}
 
 void PluginManager::onLoad()
 {
@@ -33,6 +45,53 @@ void PluginManager::onLoad()
 		std::wstring test = std::wstring(*path);
 		fileDialog.SetPwd(test);
 	}
+
+	CURL *curl;
+	CURLcode res;
+
+	curl_global_init(CURL_GLOBAL_DEFAULT);
+
+	curl = curl_easy_init();
+	if (curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, "https://dev.bakkesplugins.com/api/v1/plugins/get/short?pluginids=69,87");
+		std::string readBuffer;
+#ifdef SKIP_PEER_VERIFICATION
+		/*
+		 * If you want to connect to a site who isn't using a certificate that is
+		 * signed by one of the certs in the CA bundle you have, you can skip the
+		 * verification of the server's certificate. This makes the connection
+		 * A LOT LESS SECURE.
+		 *
+		 * If you have a CA cert for the server stored someplace else than in the
+		 * default bundle, then the CURLOPT_CAPATH option might come handy for
+		 * you.
+		 */
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+#endif
+
+#ifdef SKIP_HOSTNAME_VERIFICATION
+		/*
+		 * If the site you're connecting to uses a different host name that what
+		 * they have mentioned in their server certificate's commonName (or
+		 * subjectAltName) fields, libcurl will refuse to connect. You can skip
+		 * this check, but this will make the connection less secure.
+		 */
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+#endif
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+		/* Perform the request, res will get the return code */
+		res = curl_easy_perform(curl);
+		/* Check for errors */
+		if (res != CURLE_OK)
+			fprintf(stderr, "curl_easy_perform() failed: %s\n",
+				curl_easy_strerror(res));
+		cvarManager->log(readBuffer);
+		/* always cleanup */
+		curl_easy_cleanup(curl);
+	}
+
+	curl_global_cleanup();
 #endif
 
 }
