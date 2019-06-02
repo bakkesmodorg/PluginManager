@@ -16,7 +16,7 @@
 #pragma comment(lib, "Normaliz.lib")
 #pragma comment(lib, "libcurl_a.lib")
 #pragma comment(lib, "curlpp.lib")
-#include "curlpp/curlpp.cpp"
+//#include "curlpp/curlpp.cpp"
 #include "curlpp/cURLpp.hpp"
 #include "curlpp/Easy.hpp"
 #include "curlpp/Options.hpp"
