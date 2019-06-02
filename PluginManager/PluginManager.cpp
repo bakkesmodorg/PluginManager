@@ -24,7 +24,7 @@
 
 #include <thread>
 #include <future>
-
+#include "SettingsManager.h"
 #endif
 
 #include "nlohmann/json.hpp"
@@ -170,6 +170,7 @@ std::future<std::string> checkupdate(std::string const& url, std::string const& 
 void PluginManager::onLoad()
 {
 	srand(time(0));
+	RegisterURIHandler();
 	cvarManager->registerNotifier("plugin", std::bind(&PluginManager::OnPluginListUpdated, this, std::placeholders::_1), "plugin command hook for plugin manager", PERMISSION_ALL);
 	cvarManager->registerNotifier("bpm_install", std::bind(&PluginManager::OnBpmCommand, this, std::placeholders::_1), "Install BakkesMod plugin by id", PERMISSION_ALL);
 	//93
@@ -266,6 +267,20 @@ void PluginManager::OnBpmCommand(std::vector<std::string> params)
 		}
 		CheckForPluginUpdates();
 	}
+}
+
+void PluginManager::RegisterURIHandler()
+{
+	RegisterySettingsManager settings;
+
+	std::wstring registryString = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
+	registryString += L"plugininstaller.exe";
+	settings.SaveSetting(L"", L"URL:bakkesmod protocol", L"Software\\Classes\\bakkesmod", HKEY_CURRENT_USER);
+	settings.SaveSetting(L"URL Protocol", L"bakkesmod",  L"Software\\Classes\\bakkesmod", HKEY_CURRENT_USER);
+	settings.SaveSetting(L"", (registryString + L",1").c_str(), L"Software\\Classes\\bakkesmod\\DefaultIcon", HKEY_CURRENT_USER);
+	
+	settings.SaveSetting(L"", (L"\"" + registryString + L"\" \"%1\"") , L"Software\\Classes\\bakkesmod\\shell\\open\\command", HKEY_CURRENT_USER);
+
 }
 
 std::string PluginManager::InstallZip(std::filesystem::path path)

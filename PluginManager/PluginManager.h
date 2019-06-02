@@ -34,6 +34,7 @@ public:
 	void OnPluginListUpdated(std::vector<std::string> params);
 
 	void OnBpmCommand(std::vector<std::string> params);
+	void RegisterURIHandler();
 	/*
 	Installing related functions
 	*/
