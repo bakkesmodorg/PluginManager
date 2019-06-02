@@ -96,15 +96,15 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;CURL_STATICLIB</PreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;CURL_STATICLIB;CURLPP_STATICLIB</PreprocessorDefinitions>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>F:\Bakkesmod\development\BakkesMod-rewrite\BakkesMod Rewrite;C:\Users\Chris\Downloads\miniz-master;./json/include;Q:\libcurl\conan-libcurl-testing-7.64.1\curl-master\builds\libcurl-vc15-x86-release-static-ipv6-sspi-winssl\include;$(USERPROFILE)\.conan\data\OpenSSL\1.1.1b\conan\stable\package\d140711d95cc16a85766a8fc3a551dfafe84cf63\include;$(USERPROFILE)\.conan\data\zlib\1.2.11\conan\stable\package\3fb49604f9c2f729b85ba3115852006824e72cab\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Chris\Downloads\curlpp-master\include;C:\Users\Chris\Downloads\curlpp-0.8.1 (1)\curlpp-0.8.1\include;F:\Bakkesmod\development\BakkesMod-rewrite\BakkesMod Rewrite;C:\Users\Chris\Downloads\miniz-master;./json/include;Q:\libcurl\conan-libcurl-testing-7.64.1\curl-master\builds\libcurl-vc15-x86-release-static-ipv6-sspi-winssl\include;$(USERPROFILE)\.conan\data\OpenSSL\1.1.1b\conan\stable\package\d140711d95cc16a85766a8fc3a551dfafe84cf63\include;$(USERPROFILE)\.conan\data\zlib\1.2.11\conan\stable\package\3fb49604f9c2f729b85ba3115852006824e72cab\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>Q:\libcurl\conan-libcurl-testing-7.64.1\curl-master\builds\libcurl-vc15-x86-release-static-ipv6-sspi-winssl\lib;$(USERPROFILE)\.conan\data\OpenSSL\1.1.1b\conan\stable\package\d140711d95cc16a85766a8fc3a551dfafe84cf63\lib;$(USERPROFILE)\.conan\data\zlib\1.2.11\conan\stable\package\3fb49604f9c2f729b85ba3115852006824e72cab\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\Chris\Downloads\curlpp-master\ReleaseStatic;Q:\libcurl\conan-libcurl-testing-7.64.1\curl-master\builds\libcurl-vc15-x86-release-static-ipv6-sspi-winssl\lib;$(USERPROFILE)\.conan\data\OpenSSL\1.1.1b\conan\stable\package\d140711d95cc16a85766a8fc3a551dfafe84cf63\lib;$(USERPROFILE)\.conan\data\zlib\1.2.11\conan\stable\package\3fb49604f9c2f729b85ba3115852006824e72cab\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>C:\Users\Chris\Downloads\bakkesmod-patch.exe "$(TargetPath)"</Command>

@@ -16,6 +16,9 @@ struct PluginEntry
 	bool loaded = false;
 };
 
+#define BPM_JSON_FILE  "./bakkesmod/data/bpm.json"
+#define BP_ENDPOINT "https://dev.bakkesplugins.com/"
+
 class PluginManager : public BakkesMod::Plugin::BakkesModPlugin, public BakkesMod::Plugin::PluginWindow
 {
 private:
@@ -30,17 +33,25 @@ public:
 	*/
 	void OnPluginListUpdated(std::vector<std::string> params);
 
-
+	void OnBpmCommand(std::vector<std::string> params);
 	/*
 	Installing related functions
 	*/
 private:
+	std::vector<int> plugins_to_install;
 public:
 	/*
 	Extracts the plugin, trusts the developer packaged correctly and doesn't overwrite existing file.
 	Returns the contents of plugin.json
 	*/
 	std::string InstallZip(std::filesystem::path path);
+
+	/*
+	Overwrites/creates bpm.json with default data
+	*/
+	void CreateBPMJson();
+
+	void CheckForPluginUpdates();
 
 	/*
 	GUI stuff, implementation is in PluginManagerGUI.cpp

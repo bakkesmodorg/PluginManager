@@ -5,7 +5,7 @@ using json = nlohmann::json;
 
 void PluginManager::Render()
 {
-	ImGui::SetNextWindowSizeConstraints(ImVec2(55 + 250 + 55 + 250 + 80, 600), ImVec2(FLT_MAX, FLT_MAX));
+	ImGui::SetNextWindowSizeConstraints(ImVec2(55 + 250 + 55 + 250 + 80 + 100, 600), ImVec2(FLT_MAX, FLT_MAX));
 	ImGui::Begin(menuTitle.c_str(), &isWindowOpen, ImGuiWindowFlags_NoCollapse);
 	allPluginsVectorMutex.lock();
 
@@ -79,7 +79,19 @@ void PluginManager::Render()
 		cvarManager->executeCommand("exec config;");
 		fileDialog.ClearSelected();
 	}
-	ImGui::Button("Install from BakkesPlugins");
+	static char buf[256];
+	ImGui::PushItemWidth(50);
+	ImGui::InputText("ID##inputid", buf, 256);
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+	if (ImGui::Button("Install by ID"))
+	{
+		cvarManager->executeCommand("sleep 0; bpm_install " + std::string(buf) + ";");
+	}
+	if (ImGui::Button("Install from BakkesPlugins"))
+	{
+		ShellExecute(0, 0, BP_ENDPOINT, 0, 0, SW_SHOW);
+	}
 	ImGui::EndChild();
 
 	ImGui::End();
