@@ -283,6 +283,12 @@ void PluginManager::RegisterURIHandler()
 
 }
 
+bool has_suffix(const std::string &str, const std::string &suffix)
+{
+	return str.size() >= suffix.size() &&
+		str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
 std::string PluginManager::InstallZip(std::filesystem::path path)
 {
 	std::basic_ifstream<BYTE> fileStr(path, std::ios::binary);
@@ -290,6 +296,8 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 	auto data = std::vector<BYTE>((std::istreambuf_iterator<BYTE>(fileStr)),
 		std::istreambuf_iterator<BYTE>());
 
+	bool pluginJsonFound = false;
+	std::string dllName = "";
 	miniz_cpp::zip_file file(data);
 	std::string extractDir = "bakkesmod/";
 	for (auto &member : file.infolist())
@@ -297,6 +305,7 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 		std::string fullPath = extractDir + member.filename;
 		if (member.filename.compare("plugin.json") == 0)
 		{
+			pluginJsonFound = true;
 			std::string tempJson = extractDir + "data/";
 			{
 				file.extract(member, tempJson);
@@ -321,12 +330,20 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 		{
 			if (member.filename.substr(member.filename.size() - std::string(".dll").size()).compare(".dll") == 0)
 			{
-				std::string dllName = member.filename.substr(0, member.filename.rfind('.'));
+				dllName = member.filename.substr(0, member.filename.rfind('.'));
 				dllName = dllName.substr(dllName.rfind('/') + 1);
 				cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
 			}
 			file.extract(member, extractDir);
 		}
+	}
+	if (!pluginJsonFound)
+	{
+		if (!has_suffix(dllName, ".dll"))
+		{
+			dllName = dllName + ".dll";
+		}
+		return "{ \"dll\": \"" + dllName + "\" }";
 	}
 	return jsonResult;
 }
@@ -390,7 +407,7 @@ void PluginManager::CheckForPluginUpdates()
 			separator = ",";
 		}
 
-		std::shared_ptr<std::future<std::string>> fut = std::make_shared< std::future<std::string>>(checkupdate("https://dev.bakkesplugins.com/api/v1/plugins/get/short?pluginids=" + plugin_list, ""));
+		std::shared_ptr<std::future<std::string>> fut = std::make_shared< std::future<std::string>>(checkupdate("https://bakkesplugins.com/api/v1/plugins/get/short?pluginids=" + plugin_list, ""));
 		std::thread([cv = &cvarManager, gw = &gameWrapper, fut, plugin_versions, this, bpmj]() mutable {
 
 			while (fut->wait_for(std::chrono::seconds(0)) == std::future_status::ready);
@@ -399,7 +416,20 @@ void PluginManager::CheckForPluginUpdates()
 				std::string response = fut->get();
 				(*cv)->log(response);
 				std::string resp = response;
-				auto response_json = json::parse(resp);
+				nlohmann::json response_json;
+				try {
+					response_json = json::parse(resp);
+				}
+				catch (json::parse_error &e)
+				{
+					(*cv)->log("JSON parse error: " + std::string(e.what()));
+					return;
+				}
+				catch (...)
+				{
+					(*cv)->log("Unexpected JSON parse failure!");
+					return;
+				}
 				if (response_json.is_discarded())
 				{
 					(*cv)->log("JSON is not parseable!");
