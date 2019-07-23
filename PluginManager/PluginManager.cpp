@@ -29,7 +29,7 @@
 
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
-BAKKESMOD_PLUGIN(PluginManager, "Plugin Manager", "0.1", 0)
+BAKKESMOD_PLUGIN(PluginManager, "Plugin Manager", "2", 0)
 
 std::string random_string(size_t length)
 {
@@ -52,7 +52,7 @@ size_t WriteCallback(char* ptr, size_t size, size_t nmemb, void *f)
 	FILE *file = (FILE *)f;
 	return fwrite(ptr, size, nmemb, file);
 };
-
+unsigned long long steamID = 0;
 
 std::future<std::string> downloadZip(std::string const& url) {
 	return std::async(std::launch::async, [](std::string const& url) mutable {
@@ -88,7 +88,7 @@ std::future<std::string> downloadZip(std::string const& url) {
 
 
 				std::list<std::string> header;
-				header.push_back("User-Agent: BPM;1;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;0;");
+				header.push_back("User-Agent: BPM;2;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;" + std::to_string(steamID) + ";");
 				request.setOpt(new curlpp::options::HttpHeader(header));
 
 				request.setOpt(myFunction);
@@ -132,7 +132,7 @@ std::future<std::string> checkupdate(std::string const& url, std::string const& 
 
 			std::list<std::string> header;
 			header.push_back("Content-Type: application/json");
-			header.push_back("User-Agent: BPM;1;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;0;");
+			header.push_back("User-Agent: BPM;2;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;" + std::to_string(steamID) + ";");
 			curlpp::Cleanup clean;
 			curlpp::Easy r;
 			r.setOpt(new curlpp::options::Url(url));
@@ -176,6 +176,8 @@ void PluginManager::onLoad()
 	//93
 	OnPluginListUpdated(std::vector<std::string>());
 	fileDialog.SetAcceptableFileTypes("zip");
+	steamID = gameWrapper->GetSteamID();
+	cvarManager->log("Got steam id " + std::to_string(steamID));
 #ifdef _WIN32
 	
 
@@ -407,13 +409,13 @@ void PluginManager::CheckForPluginUpdates()
 			separator = ",";
 		}
 
-		std::shared_ptr<std::future<std::string>> fut = std::make_shared< std::future<std::string>>(checkupdate("https://bakkesplugins.com/api/v1/plugins/get/short?pluginids=" + plugin_list, ""));
-		std::thread([cv = &cvarManager, gw = &gameWrapper, fut, plugin_versions, this, bpmj]() mutable {
-
+		
+		std::thread([cv = &cvarManager, gw = &gameWrapper, plugin_list, plugin_versions, this, bpmj]() {
+			std::shared_ptr<std::future<std::string>> fut = std::make_shared< std::future<std::string>>(checkupdate("https://bakkesplugins.com/api/v1/plugins/get/short?pluginids=" + plugin_list, ""));
 			while (fut->wait_for(std::chrono::seconds(0)) == std::future_status::ready);
-
-			(*gw)->Execute([cv, fut, plugin_versions, bpmj, this](GameWrapper* game) mutable {
-				std::string response = fut->get();
+			std::string response = fut->get();
+			(*gw)->Execute([cv, fut, plugin_versions, bpmj, response, this](GameWrapper* game) mutable {
+				
 				(*cv)->log(response);
 				std::string resp = response;
 				nlohmann::json response_json;
@@ -459,13 +461,14 @@ void PluginManager::CheckForPluginUpdates()
 									if (file_location.find("ERROR") != 0)
 									{
 										try {
+											cvarManager->executeCommand("writeconfig;");
 											cvarManager->log("Installing zip " + file_location);
 											std::string installResult = InstallZip(file_location);
 											cvarManager->log("Install done, deleting zip");
 											int result = remove(file_location.c_str());
 											cvarManager->log("Install zip delete result = " + std::to_string(result));
 
-											cvarManager->executeCommand("writeconfig;");
+											
 											std::string err = "";
 											auto jsonVal = json::parse(installResult);
 											if (err.size() == 0)

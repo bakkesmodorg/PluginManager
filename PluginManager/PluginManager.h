@@ -19,6 +19,8 @@ struct PluginEntry
 #define BPM_JSON_FILE  "./bakkesmod/data/bpm.json"
 #define BP_ENDPOINT "https://bakkesplugins.com/"
 
+
+
 class PluginManager : public BakkesMod::Plugin::BakkesModPlugin, public BakkesMod::Plugin::PluginWindow
 {
 private:
