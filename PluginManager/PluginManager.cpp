@@ -367,9 +367,13 @@ void PluginManager::CheckForPluginUpdates()
 		this->CreateBPMJson();
 	}
 	json bpmj;
-	{
+	try {
 		std::ifstream ifs(BPM_JSON_FILE);
 		bpmj = json::parse(ifs);
+	}
+	catch (...) {
+		bpmj["plugins"] = json::object();
+		cvarManager->log("bpm file corrupt, recreating");
 	}
 	//if cannot parse json, recreate default file
 	if (bpmj.is_discarded())
