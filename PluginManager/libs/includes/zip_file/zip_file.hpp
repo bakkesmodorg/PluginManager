@@ -5371,6 +5371,12 @@ public:
         stream << open(member).rdbuf();
     }
 
+    void extract(const zip_info& member, const std::filesystem::path& path)
+    {
+        std::fstream stream(path / member.filename, std::ios::binary | std::ios::out);
+        stream << open(member).rdbuf();
+    }
+
     void extractall(const std::string &path)
     {
         extractall(path, infolist());
