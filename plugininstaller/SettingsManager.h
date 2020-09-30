@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include <string.h>
+#include <string>
 #include <map>
 #include <memory>
 #include <windows.h>

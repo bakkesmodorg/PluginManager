@@ -4,17 +4,20 @@
 //Need to undef these for zip_file
 #undef min
 #undef max
-#include "zip_file.hpp"
+#include "zip_file/zip_file.hpp"
 #ifdef _WIN32
 #include <windows.h>
 #include <Shlobj_core.h>
 #include <sstream>
 #include <memory>
 #include <curl/curl.h>
-#pragma comment(lib, "libssl.lib")
+#pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "libssl_static.lib")
+#pragma comment(lib, "libcrypto_static.lib")
 #pragma comment(lib, "Wldap32.lib")
 #pragma comment(lib, "Normaliz.lib")
-#pragma comment(lib, "libcurl_a.lib")
+#pragma comment(lib, "libcurl.lib")
 #pragma comment(lib, "curlpp.lib")
 //#include "curlpp/curlpp.cpp"
 #include "curlpp/cURLpp.hpp"
@@ -90,7 +93,9 @@ std::future<std::string> downloadZip(std::string const& url) {
 				std::list<std::string> header;
 				header.push_back("User-Agent: BPM;2;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;" + std::to_string(steamID) + ";");
 				request.setOpt(new curlpp::options::HttpHeader(header));
-
+				request.setOpt(new curlpp::options::FollowLocation(true));
+				request.setOpt(new curlpp::options::SslVerifyHost(false));
+				request.setOpt(new curlpp::options::SslVerifyPeer(false));
 				request.setOpt(myFunction);
 				request.setOpt(myData);
 
@@ -300,6 +305,9 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 
 	bool pluginJsonFound = false;
 	std::string dllName = "";
+	bool fileAlreadyExists = false;
+	bool pluginIsLoaded = false;
+
 	miniz_cpp::zip_file file(data);
 	std::string extractDir = "bakkesmod/";
 	for (auto &member : file.infolist())
@@ -334,6 +342,22 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 			{
 				dllName = member.filename.substr(0, member.filename.rfind('.'));
 				dllName = dllName.substr(dllName.rfind('/') + 1);
+				
+
+				std::string tempDllName = dllName;
+				if (!has_suffix(tempDllName, ".dll"))
+				{
+					tempDllName = tempDllName + ".dll";
+				}
+				std::string dllNameLower = tempDllName;
+				std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
+				fileAlreadyExists = file_exists("./bakkesmod/plugins/" + tempDllName);
+				cvarManager->log("Checking file ./bakkesmod/plugins/" + tempDllName + ": " + std::to_string(fileAlreadyExists));
+				if (auto a = allPlugins.find(dllNameLower); a != allPlugins.end())
+				{
+					pluginIsLoaded = a->second.loaded;
+				}
+				
 				cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
 			}
 			file.extract(member, extractDir);
@@ -345,7 +369,7 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 		{
 			dllName = dllName + ".dll";
 		}
-		return "{ \"dll\": \"" + dllName + "\" }";
+		return "{ \"dll\": \"" + dllName + "\", \"was_loaded\": " + (pluginIsLoaded ? "true" : "false") + ", \"already_exists\": " + (fileAlreadyExists ? "true" : "false") + " }";
 	}
 	return jsonResult;
 }
@@ -367,9 +391,13 @@ void PluginManager::CheckForPluginUpdates()
 		this->CreateBPMJson();
 	}
 	json bpmj;
-	{
+	try {
 		std::ifstream ifs(BPM_JSON_FILE);
 		bpmj = json::parse(ifs);
+	}
+	catch (...) {
+		bpmj["plugins"] = json::object();
+		cvarManager->log("bpm file corrupt, recreating");
 	}
 	//if cannot parse json, recreate default file
 	if (bpmj.is_discarded())
@@ -455,7 +483,9 @@ void PluginManager::CheckForPluginUpdates()
 									//Download and install new plugin
 									std::future<std::string> zip_dl;
 									{
-										zip_dl = downloadZip(std::string((string)it.value()["download_url"]));
+										std::string downloadUrl = std::string(it.value()["download_url"].get<std::string>());
+										cvarManager->log("Downloading " + downloadUrl);
+										zip_dl = downloadZip(downloadUrl);
 									}
 									std::string file_location = zip_dl.get();
 									if (file_location.find("ERROR") != 0)
@@ -482,7 +512,18 @@ void PluginManager::CheckForPluginUpdates()
 														{
 															dllName = dllName.substr(0, dllName.rfind('.'));
 														}
-														cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
+														cvarManager->log("Install result: " + installResult);
+														//If file did not already exist -> new install -> so auto load
+														//if file did already exist, ensure it was loaded before. Only if thats the case load it again
+														if (!jsonVal.value("already_exists", false) || jsonVal.value("was_loaded", true))
+														{
+															cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
+														}
+														else
+														{
+															cvarManager->log("Not loading plugin " + dllName + " because it was disabled!");
+														}
+														
 													}
 												}
 											}
