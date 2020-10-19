@@ -30,7 +30,7 @@
 #include "SettingsManager.h"
 #endif
 
-#include "json.hpp"
+#include "nlohmann/json.hpp"
 using json = nlohmann::json;
 BAKKESMOD_PLUGIN(PluginManager, "Plugin Manager", "2", 0)
 
@@ -357,7 +357,7 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 				std::string dllNameLower = tempDllName;
 				std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
 				auto pth = GetAbsolutePath("plugins/" + tempDllName);
-				fileAlreadyExists = file_exists(pth);
+				fileAlreadyExists = std::filesystem::exists(pth);
 				cvarManager->log("Checking file " + ws2s(pth.wstring()) + ": " + std::to_string(fileAlreadyExists));
 				if (auto a = allPlugins.find(dllNameLower); a != allPlugins.end())
 				{
@@ -392,7 +392,7 @@ void PluginManager::CreateBPMJson()
 
 void PluginManager::CheckForPluginUpdates()
 {
-	if (!file_exists(GetAbsolutePath(BPM_JSON_FILE)))
+	if (!std::filesystem::exists(GetAbsolutePath(BPM_JSON_FILE)))
 	{
 		this->CreateBPMJson();
 	}
