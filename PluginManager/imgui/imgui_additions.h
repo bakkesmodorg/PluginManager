@@ -1,9 +1,9 @@
 #pragma once
-#include <string.h>
+#include <string>
 #include <vector>
 #include "imgui.h"
 #include "imgui_internal.h"
-using namespace std;
+
 namespace ImGui
 {
 	static auto vector_getter = [](void* vec, int idx, const char** out_text)
@@ -15,6 +15,4 @@ namespace ImGui
 	};
 	bool Combo(const char* label, int* currIndex, std::vector<std::string>& values);
 	bool ListBox(const char* label, int* currIndex, std::vector<std::string>& values);
-
-
 }

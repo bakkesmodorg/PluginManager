@@ -1,5 +1,6 @@
 #pragma once
-#include <string.h>
+#include <string>
+
 #include <map>
 #include <memory>
 #include <windows.h>
