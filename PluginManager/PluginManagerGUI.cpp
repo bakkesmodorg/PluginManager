@@ -30,6 +30,7 @@ void PluginManager::Render()
 		ImGui::Text(it->second.pluginName.c_str()); ImGui::NextColumn();
 		ImGui::Text(it->second.version.c_str()); ImGui::NextColumn();
 		ImGui::Text(it->second.dllName.c_str()); ImGui::NextColumn();
+
 		ImGui::Separator();
 		if (changed)
 		{
@@ -119,12 +120,12 @@ void PluginManager::SetImGuiContext(uintptr_t ctx)
 
 bool PluginManager::ShouldBlockInput()
 {
-	return true;
+	return ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;
 }
 
 bool PluginManager::IsActiveOverlay()
 {
-	return false;
+	return true;
 }
 
 void PluginManager::OnOpen()

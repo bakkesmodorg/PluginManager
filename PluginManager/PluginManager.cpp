@@ -4,17 +4,20 @@
 //Need to undef these for zip_file
 #undef min
 #undef max
-#include "zip_file.hpp"
+#include "zip_file/zip_file.hpp"
 #ifdef _WIN32
 #include <windows.h>
 #include <Shlobj_core.h>
 #include <sstream>
 #include <memory>
 #include <curl/curl.h>
-#pragma comment(lib, "libssl.lib")
+#pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "libssl_static.lib")
+#pragma comment(lib, "libcrypto_static.lib")
 #pragma comment(lib, "Wldap32.lib")
 #pragma comment(lib, "Normaliz.lib")
-#pragma comment(lib, "libcurl_a.lib")
+#pragma comment(lib, "libcurl.lib")
 #pragma comment(lib, "curlpp.lib")
 //#include "curlpp/curlpp.cpp"
 #include "curlpp/cURLpp.hpp"
@@ -54,7 +57,7 @@ size_t WriteCallback(char* ptr, size_t size, size_t nmemb, void *f)
 };
 unsigned long long steamID = 0;
 
-std::future<std::string> downloadZip(std::string const& url) {
+std::future<std::wstring> downloadZip(std::string const& url) {
 	return std::async(std::launch::async, [](std::string const& url) mutable {
 		try
 		{
@@ -64,22 +67,22 @@ std::future<std::string> downloadZip(std::string const& url) {
 			/// Set the writer callback to enable cURL to write result in a memory area
 			curlpp::options::WriteFunctionCurlFunction
 				myFunction(WriteCallback);
-			char tmp_path[MAX_PATH];
-			GetTempPath(MAX_PATH, tmp_path);
-			const std::string download_folder = std::string(tmp_path) + "/bakkesmod/";
-			const std::string filename = download_folder + random_string(12) + ".zip";
-			if (CreateDirectory(download_folder.c_str(), NULL) ||
+			wchar_t tmp_path[MAX_PATH];
+			GetTempPathW(MAX_PATH, tmp_path);
+			const std::filesystem::path download_folder = std::filesystem::path(tmp_path) / "bakkesmod";
+			const std::filesystem::path filename = download_folder / (random_string(12) + ".zip");
+			if (CreateDirectoryW(download_folder.c_str(), NULL) ||
 				ERROR_ALREADY_EXISTS == GetLastError())
 			{
 				
 
 				FILE *file = stdout;
 
-				file = fopen(filename.c_str(), "wb");
+				file = _wfopen(filename.c_str(), L"wb");
 				if (file == NULL)
 				{
 					fprintf(stderr, "%s/n", strerror(errno));
-					return std::string("ERROR: " + std::string(strerror(errno)));
+					return std::wstring(L"ERROR: " + s2ws(std::string(strerror(errno))));
 				}
 				
 
@@ -90,7 +93,9 @@ std::future<std::string> downloadZip(std::string const& url) {
 				std::list<std::string> header;
 				header.push_back("User-Agent: BPM;2;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;" + std::to_string(steamID) + ";");
 				request.setOpt(new curlpp::options::HttpHeader(header));
-
+				request.setOpt(new curlpp::options::FollowLocation(true));
+				request.setOpt(new curlpp::options::SslVerifyHost(false));
+				request.setOpt(new curlpp::options::SslVerifyPeer(false));
 				request.setOpt(myFunction);
 				request.setOpt(myData);
 
@@ -99,27 +104,27 @@ std::future<std::string> downloadZip(std::string const& url) {
 				//request.setOpt(new curlpp::options::Verbose(true));
 				request.perform();
 				fclose(file);
-				return filename;
+				return filename.wstring();
 			}
 			else
 			{
-				return std::string("ERROR: Dont have access to " + download_folder);
+				return std::wstring(L"ERROR: Dont have access to " + download_folder.wstring());
 			}
 		}
 
 		catch (curlpp::LogicError & e)
 		{
 			std::cout << e.what() << std::endl;
-			return std::string("ERROR: " + std::string(e.what()));
+			return std::wstring(L"ERROR: " + s2ws(std::string(e.what())));
 		}
 
 		catch (curlpp::RuntimeError & e)
 		{
 			std::cout << e.what() << std::endl;
-			return std::string("ERROR: " + std::string(e.what()));
+			return std::wstring(L"ERROR: " + s2ws(std::string(e.what())));
 		}
 		catch (...) {}
-		return std::string("ERROR: idk");
+		return std::wstring(L"ERROR: idk");
 	}, url);
 }
 
@@ -207,6 +212,11 @@ void PluginManager::onUnload()
 {
 }
 
+std::filesystem::path PluginManager::GetAbsolutePath(std::filesystem::path relative)
+{
+	return gameWrapper->GetBakkesModPath() / relative;
+}
+
 void PluginManager::OnPluginListUpdated(std::vector<std::string> params)
 {
 	allPluginsVectorMutex.lock();
@@ -228,12 +238,12 @@ void PluginManager::OnPluginListUpdated(std::vector<std::string> params)
 	}
 
 #ifdef _WIN32
-	std::string pattern("./bakkesmod/plugins/*.dll");
-	WIN32_FIND_DATA data;
+	std::filesystem::path pattern = gameWrapper->GetBakkesModPath() / "plugins/*.dll";
+	WIN32_FIND_DATAW data;
 	HANDLE hFind;
-	if ((hFind = FindFirstFile(pattern.c_str(), &data)) != INVALID_HANDLE_VALUE) {
+	if ((hFind = FindFirstFileW(pattern.c_str(), &data)) != INVALID_HANDLE_VALUE) {
 		do {
-			std::string dllName = std::string(data.cFileName);
+			std::string dllName = ws2s(std::wstring(data.cFileName));
 			std::string dllNameLower = dllName;
 			std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
 			if (allPlugins.find(dllNameLower) == allPlugins.end()) //plugin is not loaded
@@ -242,7 +252,7 @@ void PluginManager::OnPluginListUpdated(std::vector<std::string> params)
 					dllName, dllName.substr(0, dllName.rfind('.')), "-", false
 				};
 			}
-		} while (FindNextFile(hFind, &data) != 0);
+		} while (FindNextFileW(hFind, &data) != 0);
 		FindClose(hFind);
 	}
 #endif
@@ -300,20 +310,23 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 
 	bool pluginJsonFound = false;
 	std::string dllName = "";
+	bool fileAlreadyExists = false;
+	bool pluginIsLoaded = false;
+
 	miniz_cpp::zip_file file(data);
-	std::string extractDir = "bakkesmod/";
+	std::filesystem::path extractDir = gameWrapper->GetBakkesModPath(); "bakkesmod";
 	for (auto &member : file.infolist())
 	{
-		std::string fullPath = extractDir + member.filename;
+		std::filesystem::path fullPath = extractDir / member.filename;
 		if (member.filename.compare("plugin.json") == 0)
 		{
 			pluginJsonFound = true;
-			std::string tempJson = extractDir + "data/";
+			std::filesystem::path tempJson = extractDir / "data/";
 			{
 				file.extract(member, tempJson);
 			}
 			{
-				std::ifstream jsonInput(tempJson + "plugin.json");
+				std::ifstream jsonInput(tempJson / "plugin.json");
 				
 				jsonInput.seekg(0, std::ios::end);
 				jsonResult.reserve(jsonInput.tellg());
@@ -322,7 +335,7 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 				jsonResult.assign((std::istreambuf_iterator<char>(jsonInput)),
 					std::istreambuf_iterator<char>());
 			}
-			std::filesystem::remove(tempJson + "plugin.json");
+			std::filesystem::remove(tempJson / "plugin.json");
 		}
 		else if (member.filename.find(".") == std::string::npos) //It's a folder
 		{
@@ -334,6 +347,23 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 			{
 				dllName = member.filename.substr(0, member.filename.rfind('.'));
 				dllName = dllName.substr(dllName.rfind('/') + 1);
+				
+
+				std::string tempDllName = dllName;
+				if (!has_suffix(tempDllName, ".dll"))
+				{
+					tempDllName = tempDllName + ".dll";
+				}
+				std::string dllNameLower = tempDllName;
+				std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
+				auto pth = GetAbsolutePath("plugins/" + tempDllName);
+				fileAlreadyExists = file_exists(pth);
+				cvarManager->log("Checking file " + ws2s(pth.wstring()) + ": " + std::to_string(fileAlreadyExists));
+				if (auto a = allPlugins.find(dllNameLower); a != allPlugins.end())
+				{
+					pluginIsLoaded = a->second.loaded;
+				}
+				
 				cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
 			}
 			file.extract(member, extractDir);
@@ -345,7 +375,7 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 		{
 			dllName = dllName + ".dll";
 		}
-		return "{ \"dll\": \"" + dllName + "\" }";
+		return "{ \"dll\": \"" + dllName + "\", \"was_loaded\": " + (pluginIsLoaded ? "true" : "false") + ", \"already_exists\": " + (fileAlreadyExists ? "true" : "false") + " }";
 	}
 	return jsonResult;
 }
@@ -356,26 +386,30 @@ void PluginManager::CreateBPMJson()
 
 	bpmdata["plugins"] = json::object();
 
-	std::ofstream file(BPM_JSON_FILE);
+	std::ofstream file(GetAbsolutePath(BPM_JSON_FILE));
 	file << bpmdata;
 }
 
 void PluginManager::CheckForPluginUpdates()
 {
-	if (!file_exists(BPM_JSON_FILE))
+	if (!file_exists(GetAbsolutePath(BPM_JSON_FILE)))
 	{
 		this->CreateBPMJson();
 	}
 	json bpmj;
-	{
-		std::ifstream ifs(BPM_JSON_FILE);
+	try {
+		std::ifstream ifs(GetAbsolutePath(BPM_JSON_FILE));
 		bpmj = json::parse(ifs);
+	}
+	catch (...) {
+		bpmj["plugins"] = json::object();
+		cvarManager->log("bpm file corrupt, recreating");
 	}
 	//if cannot parse json, recreate default file
 	if (bpmj.is_discarded())
 	{
 		this->CreateBPMJson();
-		std::ifstream ifs(BPM_JSON_FILE);
+		std::ifstream ifs(GetAbsolutePath(BPM_JSON_FILE));
 		bpmj = json::parse(ifs);
 		if (bpmj.is_discarded())
 		{
@@ -453,19 +487,21 @@ void PluginManager::CheckForPluginUpdates()
 								if (plugin_version > found->second)
 								{
 									//Download and install new plugin
-									std::future<std::string> zip_dl;
+									std::future<std::wstring> zip_dl;
 									{
-										zip_dl = downloadZip(std::string((string)it.value()["download_url"]));
+										std::string downloadUrl = std::string(it.value()["download_url"].get<std::string>());
+										cvarManager->log("Downloading " + downloadUrl);
+										zip_dl = downloadZip(downloadUrl);
 									}
-									std::string file_location = zip_dl.get();
-									if (file_location.find("ERROR") != 0)
+									std::wstring file_location = zip_dl.get();
+									if (file_location.find(L"ERROR") != 0)
 									{
 										try {
 											cvarManager->executeCommand("writeconfig;");
-											cvarManager->log("Installing zip " + file_location);
+											cvarManager->log("Installing zip " + ws2s(file_location));
 											std::string installResult = InstallZip(file_location);
 											cvarManager->log("Install done, deleting zip");
-											int result = remove(file_location.c_str());
+											int result = _wremove(file_location.c_str());
 											cvarManager->log("Install zip delete result = " + std::to_string(result));
 
 											
@@ -482,7 +518,18 @@ void PluginManager::CheckForPluginUpdates()
 														{
 															dllName = dllName.substr(0, dllName.rfind('.'));
 														}
-														cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
+														cvarManager->log("Install result: " + installResult);
+														//If file did not already exist -> new install -> so auto load
+														//if file did already exist, ensure it was loaded before. Only if thats the case load it again
+														if (!jsonVal.value("already_exists", false) || jsonVal.value("was_loaded", true))
+														{
+															cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
+														}
+														else
+														{
+															cvarManager->log("Not loading plugin " + dllName + " because it was disabled!");
+														}
+														
 													}
 												}
 											}
@@ -507,7 +554,7 @@ void PluginManager::CheckForPluginUpdates()
 									}
 									else
 									{
-										cvarManager->log("Got error when downloading plugin: " + file_location);
+										cvarManager->log("Got error when downloading plugin: " + ws2s(file_location));
 									}
 								}
 								//plugin_versions.erase(plugin_id_key);
@@ -519,7 +566,7 @@ void PluginManager::CheckForPluginUpdates()
 						{
 							bpmj["plugins"][std::to_string(it.first)]["version"] = it.second;
 						}
-						std::ofstream file(BPM_JSON_FILE);
+						std::ofstream file(GetAbsolutePath(BPM_JSON_FILE));
 						file << bpmj;
 					}
 
