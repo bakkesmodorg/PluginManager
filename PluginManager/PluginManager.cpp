@@ -286,6 +286,10 @@ void PluginManager::RegisterURIHandler()
 	RegisterySettingsManager settings;
 
 	std::wstring registryString = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
+	if (registryString.back() != '/')
+	{
+		registryString += L"/";
+	}
 	registryString += L"plugininstaller.exe";
 	settings.SaveSetting(L"", L"URL:bakkesmod protocol", L"Software\\Classes\\bakkesmod", HKEY_CURRENT_USER);
 	settings.SaveSetting(L"URL Protocol", L"bakkesmod",  L"Software\\Classes\\bakkesmod", HKEY_CURRENT_USER);
