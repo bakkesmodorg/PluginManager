@@ -286,7 +286,7 @@ void PluginManager::RegisterURIHandler()
 	RegisterySettingsManager settings;
 
 	std::wstring registryString = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
-	if (registryString.back() != '/')
+	if (!registryString.empty() && registryString.back() != '/')
 	{
 		registryString += L"/";
 	}
