@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 		getchar();
 		return EXIT_FAILURE;
 	}
-	if (registryString.back() != '/')
+	if (registryString.back() != '/' && registryString.back() != '\\')
 	{
 		registryString += L"/";
 	}
@@ -33,14 +33,16 @@ int main(int argc, char *argv[])
 	std::string rcon_password = "password";
 
 
-	std::wstring config_path = registryString + L"cfg/config.cfg";
-	if (GetFileAttributesW(config_path.c_str()) != 0xFFFFFFFF) //file exists
+	std::filesystem::path config_path = registryString + L"cfg/config.cfg";
+	std::cout << "Checking config path " << config_path << "\n";
+	if (std::filesystem::exists(config_path)) //file exists
 	{
 		std::ifstream readConfig(config_path);
 		std::string line;
 		
 		while (std::getline(readConfig, line))
 		{
+			//std::cout << line << "\n";
 			std::istringstream iss(line);
 			std::string name, val;
 			if (!(iss >> name >> val)) { break; } // error
@@ -77,12 +79,15 @@ int main(int argc, char *argv[])
 	{
 		param = param.substr(std::string("bakkesmod://").size());
 	}
+	//std::cout << "Param: " << param << "\n";
 	/*else
 	{
 		param = argv[1];
 	}*/
 	std::vector<std::string> params;
+	//std::cout << "Before split";
 	split(param, params, '/');
+	//std::cout << "after split";
 	std::string command = params.at(0);
 	std::cout << param << ", command: " << command << std::endl;
 	if (command.compare("install") == 0) 
@@ -108,7 +113,11 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 #endif
+			std::filesystem::path allowedFile = std::filesystem::path(registryString) / "data" / "rcon_commands.cfg";
+			std::filesystem::path allowedFileMoved = std::filesystem::path(registryString) / "data" / "rcon_commands.cfg.backup";
+
 			bool success = false;
+			bool auth_success = false;
 			std::string ws_url = "ws://localhost:" + std::to_string(rcon_port) + "/";
 			std::cout << "Trying to connect to " << ws_url << std::endl;
 			try {
@@ -116,45 +125,73 @@ int main(int argc, char *argv[])
 				if (ws.get() != NULL) {
 					ws->send("rcon_password " + rcon_password);
 					while (ws->getReadyState() != easywsclient::WebSocket::CLOSED) {
-						easywsclient::WebSocket::pointer wsp = &*ws;
+						//easywsclient::WebSocket::pointer wsp = &*ws;
 						ws->poll();
-						ws->dispatch([succ = &success, wsp, id, registryString](const std::string & message) {
+						//succ = &success, wsp, id, registryString, 
+						ws->dispatch([&](const std::string & message) {
 							printf(">>> %s\n", message.c_str());
 							if (message == "authyes") {
 
-								std::filesystem::path allowedFile = std::filesystem::path(registryString) / "data" / "rcon_commands.cfg";
-								std::filesystem::path allowedFileMoved = std::filesystem::path(registryString) / "data" / "rcon_commands.cfg.backup";
-								if (std::filesystem::exists(allowedFile))
-								{
-									if (std::filesystem::exists(allowedFileMoved))
-									{
-										std::filesystem::remove(allowedFileMoved);
-									}
-									std::filesystem::rename(allowedFile, allowedFileMoved);
-									std::ofstream out(allowedFile);
-									out << "bpm_install" << std::endl << "rcon_refresh_allowed" << std::endl;
-								}
-
-								{
-									wsp->send("rcon_refresh_allowed;" + std::string("bpm_install ") + id + ";");
-									wsp->poll();
-
-									*succ = true;
-									std::cout << "Plugin install called through websockets!" << std::endl;
-								}
-
-
+								auth_success = true;
+								std::cout << "Auth success!\n";
 							}
 							else if (message == "authyes") {
-								*succ = false;
 								std::cout << "Plugin install through websockets failed, invalid password!" << std::endl;
+								
 							}
-							else
+							else if(message == "ERR:illegal_command")
 							{
-								std::cout << "Unknown message from websocket server!" << std::endl;
+								success = false;
+								std::cout << "Executed illegal command apparently!" << std::endl;
+								ws->close();
 							}
-							wsp->close();
+							
 						});
+
+						//std::cout << (int)ws->getReadyState() << std::endl;
+						ws->poll(300);
+						//std::cout << (int)ws->getReadyState() << std::endl;
+						std::cout << "Checking auth success\n";
+						if (auth_success && (ws->getReadyState() != easywsclient::WebSocket::CLOSED))
+						{
+							if (std::filesystem::exists(allowedFile))
+							{
+								if (std::filesystem::exists(allowedFileMoved))
+								{
+									std::filesystem::remove(allowedFileMoved);
+								}
+								std::cout << "Writing to file\n";
+								std::filesystem::rename(allowedFile, allowedFileMoved);
+								std::ofstream out(allowedFile);
+								out << "bpm_install" << std::endl << "rcon_refresh_allowed" << std::endl << "sleep" << std::endl;
+							}
+							Sleep(1000);
+							{
+								success = true;
+								//std::cout << (int)ws->getReadyState() << std::endl;
+								ws->poll();
+								//std::cout << (int)ws->getReadyState() << std::endl;
+								ws->send("rcon_refresh_allowed;");
+								ws->poll(300);
+								Sleep(200);
+								ws->send("bpm_install " + id + "; ");
+								//std::cout << (int)ws->getReadyState() << std::endl;
+								ws->poll(300);
+								/*ws->dispatch([&](const std::string& message)
+									{
+										std::cout << "MSG: " << message << "\n";
+										if (message == "ERR:illegal_command")
+										{
+											success = false;
+											std::cout << "Executed illegal command apparently!" << std::endl;
+										}
+									});*/
+								ws->poll(100);
+								std::cout << "Plugin install called through websockets!" << std::endl;
+								ws->close();
+							}
+						}
+						
 					}
 				}
 				else
@@ -168,6 +205,15 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
 			WSACleanup();
 #endif
+			if (std::filesystem::exists(allowedFileMoved))
+			{
+				if (std::filesystem::exists(allowedFile))
+				{
+					std::filesystem::remove(allowedFile);
+				}
+				std::filesystem::rename(allowedFileMoved, allowedFile);
+			}
+			std::cout << "Success: " << success << std::endl;
 			if (!success)
 			{
 				std::ofstream outfile;
@@ -188,15 +234,14 @@ int main(int argc, char *argv[])
 
 static inline unsigned int split(const std::string &txt, std::vector<std::string> &strs, char ch)
 {
-	unsigned int pos = txt.find(ch);
-	unsigned int initialPos = 0;
+	size_t pos = txt.find(ch);
+	size_t initialPos = 0;
 	strs.clear();
 
 	// Decompose statement
 	while (pos != std::string::npos) {
 		strs.push_back(txt.substr(initialPos, pos - initialPos));
 		initialPos = pos + 1;
-
 		pos = txt.find(ch, initialPos);
 	}
 
