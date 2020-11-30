@@ -11,17 +11,15 @@ static inline unsigned int split(const std::string &txt, std::vector<std::string
 int main(int argc, char *argv[])
 {
 	RegisterySettingsManager settings;
-	std::wstring registryString = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
-	if (registryString.empty())
+	std::wstring registryString_ = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
+	if (registryString_.empty())
 	{
 		std::cout << "Could not find BakkesMod path. Are you sure it's installed?" << std::endl;
 		getchar();
 		return EXIT_FAILURE;
 	}
-	if (registryString.back() != '/' && registryString.back() != '\\')
-	{
-		registryString += L"/";
-	}
+
+	std::filesystem::path registryStringP = std::filesystem::path(registryString_).make_preferred();
 	if (argc < 2)
 	{
 		std::cout << "Missing args" << std::endl;
@@ -33,7 +31,7 @@ int main(int argc, char *argv[])
 	std::string rcon_password = "password";
 
 
-	std::filesystem::path config_path = registryString + L"cfg/config.cfg";
+	std::filesystem::path config_path = registryStringP / L"cfg/config.cfg";
 	std::cout << "Checking config path " << config_path << "\n";
 	if (std::filesystem::exists(config_path)) //file exists
 	{
@@ -113,8 +111,8 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 #endif
-			std::filesystem::path allowedFile = std::filesystem::path(registryString) / "data" / "rcon_commands.cfg";
-			std::filesystem::path allowedFileMoved = std::filesystem::path(registryString) / "data" / "rcon_commands.cfg.backup";
+			std::filesystem::path allowedFile = registryStringP / "data" / "rcon_commands.cfg";
+			std::filesystem::path allowedFileMoved = registryStringP / "data" / "rcon_commands.cfg.backup";
 
 			bool success = false;
 			bool auth_success = false;
@@ -214,14 +212,23 @@ int main(int argc, char *argv[])
 				std::filesystem::rename(allowedFileMoved, allowedFile);
 			}
 			std::cout << "Success: " << success << std::endl;
+			for (int i = 0; i < 25; ++i)
+			{
+				std::cout << std::endl;
+			}
 			if (!success)
 			{
 				std::ofstream outfile;
 
-				outfile.open(registryString + L"/data/newfeatures.apply", std::ios_base::app);
+				outfile.open(registryStringP / L"/data/newfeatures.apply", std::ios_base::app);
 				outfile << "bpm_install " << id << std::endl;
+				
 				std::cout << "Added line \"bpm_install " << id << "\" to /data/newfeatures.apply" << std::endl;
 				std::cout << "Plugin will be installed next time you launch the game!" << std::endl;
+			}
+			else
+			{
+				std::cout << "Plugin has been installed. " << std::endl;
 			}
 
 		}

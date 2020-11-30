@@ -5,6 +5,7 @@
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "./bakkesmod/wrappers/PluginManagerWrapper.h"
 #include "bakkesmod\plugin\pluginwindow.h"
+#include "bakkesmod\wrappers\UniqueIDWrapper.h"
 
 struct PluginEntry
 {
@@ -73,6 +74,7 @@ public:
 	*/
 private:
 	std::vector<int> plugins_to_install;
+	//UniqueIDWrapper myUniqueID;
 public:
 	/*
 	Extracts the plugin, trusts the developer packaged correctly and doesn't overwrite existing file.

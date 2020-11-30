@@ -33,6 +33,24 @@
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 BAKKESMOD_PLUGIN(PluginManager, "Plugin Manager", "2", 0)
+UniqueIDWrapper myUniqueID;
+
+static inline std::string GetPlatform(OnlinePlatform platform)
+{
+	switch (platform)
+	{
+		case OnlinePlatform_Steam:
+			return "steam";
+		case OnlinePlatform_Epic:
+			return "epic";
+	}
+	return "unknown";
+}
+
+static inline std::string GetUserAgent()
+{
+	return "User-Agent: BPM;4;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";" + GetPlatform(myUniqueID.GetPlatform()) + ";" + myUniqueID.str() + ";";
+}
 
 std::string random_string(size_t length)
 {
@@ -55,7 +73,6 @@ size_t WriteCallback(char* ptr, size_t size, size_t nmemb, void *f)
 	FILE *file = (FILE *)f;
 	return fwrite(ptr, size, nmemb, file);
 };
-unsigned long long steamID = 0;
 
 std::future<std::wstring> downloadZip(std::string const& url) {
 	return std::async(std::launch::async, [](std::string const& url) mutable {
@@ -91,7 +108,7 @@ std::future<std::wstring> downloadZip(std::string const& url) {
 
 
 				std::list<std::string> header;
-				header.push_back("User-Agent: BPM;2;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;" + std::to_string(steamID) + ";");
+				header.push_back(GetUserAgent());
 				request.setOpt(new curlpp::options::HttpHeader(header));
 				request.setOpt(new curlpp::options::FollowLocation(true));
 				request.setOpt(new curlpp::options::SslVerifyHost(false));
@@ -137,7 +154,7 @@ std::future<std::string> checkupdate(std::string const& url, std::string const& 
 
 			std::list<std::string> header;
 			header.push_back("Content-Type: application/json");
-			header.push_back("User-Agent: BPM;2;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";steam;" + std::to_string(steamID) + ";");
+			header.push_back(GetUserAgent());
 			curlpp::Cleanup clean;
 			curlpp::Easy r;
 			r.setOpt(new curlpp::options::Url(url));
@@ -181,8 +198,9 @@ void PluginManager::onLoad()
 	//93
 	OnPluginListUpdated(std::vector<std::string>());
 	fileDialog.SetAcceptableFileTypes("zip");
-	steamID = gameWrapper->GetSteamID();
-	cvarManager->log("Got steam id " + std::to_string(steamID));
+	myUniqueID = gameWrapper->GetUniqueID();
+	cvarManager->log("Got unique id " + myUniqueID.str());
+	cvarManager->log("User-agent: " + GetUserAgent());
 #ifdef _WIN32
 	
 
@@ -286,16 +304,19 @@ void PluginManager::RegisterURIHandler()
 	RegisterySettingsManager settings;
 
 	std::wstring registryString = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
-	if (!registryString.empty() && registryString.back() != '/')
+	auto p = std::filesystem::path(registryString);
+	p /= L"plugininstaller.exe";
+	p = p.make_preferred();
+	/*if (!registryString.empty() && registryString.back() != '/' && registryString.back() != '\\')
 	{
 		registryString += L"/";
-	}
-	registryString += L"plugininstaller.exe";
+	}*/
+	//registryString += L"plugininstaller.exe";
 	settings.SaveSetting(L"", L"URL:bakkesmod protocol", L"Software\\Classes\\bakkesmod", HKEY_CURRENT_USER);
 	settings.SaveSetting(L"URL Protocol", L"bakkesmod",  L"Software\\Classes\\bakkesmod", HKEY_CURRENT_USER);
-	settings.SaveSetting(L"", (registryString + L",1").c_str(), L"Software\\Classes\\bakkesmod\\DefaultIcon", HKEY_CURRENT_USER);
+	settings.SaveSetting(L"", (p.wstring() + L",1").c_str(), L"Software\\Classes\\bakkesmod\\DefaultIcon", HKEY_CURRENT_USER);
 	
-	settings.SaveSetting(L"", (L"\"" + registryString + L"\" \"%1\"") , L"Software\\Classes\\bakkesmod\\shell\\open\\command", HKEY_CURRENT_USER);
+	settings.SaveSetting(L"", (L"\"" + p.wstring() + L"\" \"%1\"") , L"Software\\Classes\\bakkesmod\\shell\\open\\command", HKEY_CURRENT_USER);
 
 }
 

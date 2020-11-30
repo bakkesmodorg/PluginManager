@@ -78,6 +78,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Program Files (x86)\Steam\steamapps\common\rocketleague\Binaries\Win32\bakkesmod\bakkesmodsdk/include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\Program Files (x86)\Steam\steamapps\common\rocketleague\Binaries\Win32\bakkesmod\bakkesmodsdk/lib</AdditionalLibraryDirectories>
@@ -89,6 +90,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -100,7 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;CURL_STATICLIB;CURLPP_STATICLIB</PreprocessorDefinitions>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>C:\Users\Chris\Downloads\curlpp-master\include;C:\Users\Chris\Downloads\curlpp-0.8.1 (1)\curlpp-0.8.1\include;F:\Bakkesmod\development\BakkesMod-rewrite\BakkesMod Rewrite;C:\Users\Chris\Downloads\miniz-master;./json/include;Q:\libcurl\conan-libcurl-testing-7.64.1\curl-master\builds\libcurl-vc15-x86-release-static-ipv6-sspi-winssl\include;$(USERPROFILE)\.conan\data\OpenSSL\1.1.1b\conan\stable\package\d140711d95cc16a85766a8fc3a551dfafe84cf63\include;$(USERPROFILE)\.conan\data\zlib\1.2.11\conan\stable\package\3fb49604f9c2f729b85ba3115852006824e72cab\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
