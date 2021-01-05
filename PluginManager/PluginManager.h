@@ -58,6 +58,8 @@ private:
 	std::mutex allPluginsVectorMutex;
 	std::map<std::string, PluginEntry> allPlugins;
 public:
+	int timeout = 0;
+	void CheckEpicTimeout();
 	virtual void onLoad();
 	virtual void onUnload();
 	std::filesystem::path GetAbsolutePath(std::filesystem::path relative);

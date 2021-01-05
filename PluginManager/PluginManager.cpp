@@ -33,7 +33,9 @@
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 BAKKESMOD_PLUGIN(PluginManager, "Plugin Manager", "2", 0)
-UniqueIDWrapper myUniqueID;
+
+std::string userAgentString = "nothing";
+//UniqueIDWrapper myUniqueID;
 
 static inline std::string GetPlatform(OnlinePlatform platform)
 {
@@ -47,10 +49,6 @@ static inline std::string GetPlatform(OnlinePlatform platform)
 	return "unknown";
 }
 
-static inline std::string GetUserAgent()
-{
-	return "User-Agent: BPM;4;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";" + GetPlatform(myUniqueID.GetPlatform()) + ";" + myUniqueID.str() + ";";
-}
 
 std::string random_string(size_t length)
 {
@@ -108,7 +106,7 @@ std::future<std::wstring> downloadZip(std::string const& url) {
 
 
 				std::list<std::string> header;
-				header.push_back(GetUserAgent());
+				header.push_back(userAgentString);
 				request.setOpt(new curlpp::options::HttpHeader(header));
 				request.setOpt(new curlpp::options::FollowLocation(true));
 				request.setOpt(new curlpp::options::SslVerifyHost(false));
@@ -154,7 +152,7 @@ std::future<std::string> checkupdate(std::string const& url, std::string const& 
 
 			std::list<std::string> header;
 			header.push_back("Content-Type: application/json");
-			header.push_back(GetUserAgent());
+			header.push_back(userAgentString);
 			curlpp::Cleanup clean;
 			curlpp::Easy r;
 			r.setOpt(new curlpp::options::Url(url));
@@ -189,6 +187,29 @@ std::future<std::string> checkupdate(std::string const& url, std::string const& 
 	}, url, body);
 }
 
+void PluginManager::CheckEpicTimeout()
+{
+	auto myUniqueID = gameWrapper->GetUniqueID();
+	cvarManager->log("Current Epic ID: " + myUniqueID.GetIdString());
+	if (timeout < 10 && myUniqueID.GetEpicAccountID().size() == 0)
+	{
+		timeout++;
+		gameWrapper->SetTimeout([this](GameWrapper* gw)
+			{
+				CheckEpicTimeout();
+
+			}, 3000);
+		return;
+	}
+
+	cvarManager->log("Got unique id2 " + myUniqueID.str());
+	std::string id_str = myUniqueID.GetIdString();
+	std::replace(id_str.begin(), id_str.end(), '|', '-');
+	userAgentString = "User-Agent: BPM;4;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";" + GetPlatform(myUniqueID.GetPlatform()) + ";" + id_str + ";";
+	CheckForPluginUpdates();
+
+}
+
 void PluginManager::onLoad()
 {
 	srand(time(0));
@@ -198,9 +219,12 @@ void PluginManager::onLoad()
 	//93
 	OnPluginListUpdated(std::vector<std::string>());
 	fileDialog.SetAcceptableFileTypes("zip");
-	myUniqueID = gameWrapper->GetUniqueID();
+	auto myUniqueID = gameWrapper->GetUniqueID();
 	cvarManager->log("Got unique id " + myUniqueID.str());
-	cvarManager->log("User-agent: " + GetUserAgent());
+	std::string id_str = myUniqueID.GetIdString();
+	std::replace(id_str.begin(), id_str.end(), '|', '-');
+	userAgentString = "User-Agent: BPM;4;" + std::to_string(BAKKESMOD_PLUGIN_API_VERSION) + ";" + GetPlatform(myUniqueID.GetPlatform()) + ";" + id_str + ";";
+	//cvarManager->log("User-agent: " + userAgentString);
 #ifdef _WIN32
 	
 
@@ -217,8 +241,15 @@ void PluginManager::onLoad()
 		fileDialog.SetPwd(test);
 	}
 
-	
-	CheckForPluginUpdates();
+	if (gameWrapper->IsUsingEpicVersion())
+	{
+		CheckEpicTimeout();
+		
+	}
+	else
+	{
+		CheckForPluginUpdates();
+	}
 	
 
 	
