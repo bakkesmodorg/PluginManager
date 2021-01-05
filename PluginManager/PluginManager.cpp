@@ -303,7 +303,7 @@ void PluginManager::RegisterURIHandler()
 {
 	RegisterySettingsManager settings;
 
-	std::wstring registryString = settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
+	std::wstring registryString = gameWrapper->GetBakkesModPath();// settings.GetStringSetting(L"BakkesModPath", RegisterySettingsManager::REGISTRY_DIR_APPPATH);
 	auto p = std::filesystem::path(registryString);
 	p /= L"plugininstaller.exe";
 	p = p.make_preferred();
