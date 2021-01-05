@@ -6,6 +6,22 @@
 #include <sstream>
 #include "easywsclient/easywsclient.hpp"
 #include <filesystem>
+
+static inline std::string ws2s(const std::wstring& wstr)
+{
+	/* warning STL4017: std::wbuffer_convert, std::wstring_convert, and the <codecvt> header (containing std::codecvt_mode, std::codecvt_utf8, std::codecvt_utf16, and std::codecvt_utf8_utf16) are deprecated in C++17.
+	 * Fix from: https://stackoverflow.com/a/3999597, this fix should be backward compatible. */
+	 // using convert_typeX = std::codecvt_utf8<wchar_t>;
+	 // std::wstring_convert<convert_typeX, wchar_t> converterX;
+	 // return converterX.to_bytes(wstr);
+	if (wstr.empty()) return std::string();
+
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), nullptr, 0, nullptr, nullptr);
+	std::string strTo(size_needed, 0);
+	WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, nullptr, nullptr);
+
+	return strTo;
+}
 static inline unsigned int split(const std::string &txt, std::vector<std::string> &strs, char ch);
 
 int main(int argc, char *argv[])
@@ -31,8 +47,8 @@ int main(int argc, char *argv[])
 	std::string rcon_password = "password";
 
 
-	std::filesystem::path config_path = registryStringP / L"cfg/config.cfg";
-	std::cout << "Checking config path " << config_path << "\n";
+	std::filesystem::path config_path = registryStringP / L"cfg" / "config.cfg";
+	std::cout << "Checking config path " << ws2s(config_path) << "\n";
 	if (std::filesystem::exists(config_path)) //file exists
 	{
 		std::ifstream readConfig(config_path);
@@ -219,11 +235,11 @@ int main(int argc, char *argv[])
 			if (!success)
 			{
 				std::ofstream outfile;
-
-				outfile.open(registryStringP / L"/data/newfeatures.apply", std::ios_base::app);
+				auto newFeaturesPath = registryStringP / "data" / "newfeatures.apply";
+				outfile.open(newFeaturesPath, std::ios_base::app);
 				outfile << "bpm_install " << id << std::endl;
 				
-				std::cout << "Added line \"bpm_install " << id << "\" to /data/newfeatures.apply" << std::endl;
+				std::cout << "Added line \"bpm_install " << id << "\" to " << ws2s(newFeaturesPath.wstring()) << std::endl;
 				std::cout << "Plugin will be installed next time you launch the game!" << std::endl;
 			}
 			else
