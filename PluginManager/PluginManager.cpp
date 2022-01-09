@@ -312,7 +312,7 @@ void PluginManager::OnPluginListUpdated(std::vector<std::string> params)
 void PluginManager::OnBpmCommand(std::vector<std::string> params)
 {
 	std::string command = params.at(0);
-	if (command.compare("bpm_install") == 0)
+	if (command == "bpm_install")
 	{
 		if (params.size() < 2)
 		{
@@ -360,21 +360,21 @@ bool has_suffix(const std::string &str, const std::string &suffix)
 std::string PluginManager::InstallZip(std::filesystem::path path)
 {
 	std::basic_ifstream<BYTE> fileStr(path, std::ios::binary);
-	std::string jsonResult = "";
+	std::string jsonResult;
 	auto data = std::vector<BYTE>((std::istreambuf_iterator<BYTE>(fileStr)),
 		std::istreambuf_iterator<BYTE>());
 
 	bool pluginJsonFound = false;
-	std::string dllName = "";
+	std::string dllName;
 	bool fileAlreadyExists = false;
 	bool pluginIsLoaded = false;
 
 	miniz_cpp::zip_file file(data);
-	std::filesystem::path extractDir = gameWrapper->GetBakkesModPath(); "bakkesmod";
+	std::filesystem::path extractDir = gameWrapper->GetBakkesModPath();
 	for (auto &member : file.infolist())
 	{
 		std::filesystem::path fullPath = extractDir / member.filename;
-		if (member.filename.compare("plugin.json") == 0)
+		if (member.filename == "plugin.json")
 		{
 			pluginJsonFound = true;
 			std::filesystem::path tempJson = extractDir / "data/";
@@ -393,27 +393,25 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 			}
 			std::filesystem::remove(tempJson / "plugin.json");
 		}
-		else if (member.filename.find(".") == std::string::npos) //It's a folder
+		if (!exists(fullPath.parent_path())) // parent folder doesn't exist
 		{
-				std::filesystem::create_directory(fullPath);
+			create_directories(fullPath);
 		}
 		else
 		{
-			if (member.filename.substr(member.filename.size() - std::string(".dll").size()).compare(".dll") == 0)
+			if (fullPath.extension() == ".dll")
 			{
-				dllName = member.filename.substr(0, member.filename.rfind('.'));
-				dllName = dllName.substr(dllName.rfind('/') + 1);
-				
+				dllName = fullPath.stem().string();
 
 				std::string tempDllName = dllName;
 				if (!has_suffix(tempDllName, ".dll"))
 				{
-					tempDllName = tempDllName + ".dll";
+					tempDllName += ".dll";
 				}
 				std::string dllNameLower = tempDllName;
 				std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
 				auto pth = GetAbsolutePath("plugins/" + tempDllName);
-				fileAlreadyExists = std::filesystem::exists(pth);
+				fileAlreadyExists = exists(pth);
 				cvarManager->log("Checking file " + ws2s(pth.wstring()) + ": " + std::to_string(fileAlreadyExists));
 				if (auto a = allPlugins.find(dllNameLower); a != allPlugins.end())
 				{
@@ -477,7 +475,7 @@ void PluginManager::CheckForPluginUpdates()
 
 		std::string plugin_list;
 		std::map<int, int> plugin_versions;
-		std::string separator = "";
+		std::string separator;
 		for (auto plugin = bpmj["plugins"].begin(); plugin != bpmj["plugins"].end(); plugin++)
 		{
 			int plugin_id = std::stoi(plugin.key());
@@ -561,7 +559,7 @@ void PluginManager::CheckForPluginUpdates()
 											cvarManager->log("Install zip delete result = " + std::to_string(result));
 
 											
-											std::string err = "";
+											std::string err;
 											auto jsonVal = json::parse(installResult);
 											if (err.size() == 0)
 											{
