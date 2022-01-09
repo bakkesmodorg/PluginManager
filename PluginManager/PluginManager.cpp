@@ -357,17 +357,14 @@ bool has_suffix(const std::string &str, const std::string &suffix)
 		str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-std::string PluginManager::InstallZip(std::filesystem::path path)
+PluginInstallResult PluginManager::InstallZip(std::filesystem::path path)
 {
+	PluginInstallResult result {};
 	std::basic_ifstream<BYTE> fileStr(path, std::ios::binary);
-	std::string jsonResult;
 	auto data = std::vector<BYTE>((std::istreambuf_iterator<BYTE>(fileStr)),
 		std::istreambuf_iterator<BYTE>());
 
 	bool pluginJsonFound = false;
-	std::string dllName;
-	bool fileAlreadyExists = false;
-	bool pluginIsLoaded = false;
 
 	miniz_cpp::zip_file file(data);
 	std::filesystem::path extractDir = gameWrapper->GetBakkesModPath();
@@ -377,21 +374,23 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 		if (member.filename == "plugin.json")
 		{
 			pluginJsonFound = true;
-			std::filesystem::path tempJson = extractDir / "data/";
+			std::filesystem::path tempJsonPath = extractDir / "data/";
 			{
-				file.extract(member, tempJson);
+				file.extract(member, tempJsonPath);
 			}
 			{
-				std::ifstream jsonInput(tempJson / "plugin.json");
-				
-				jsonInput.seekg(0, std::ios::end);
-				jsonResult.reserve(jsonInput.tellg());
-				jsonInput.seekg(0, std::ios::beg);
+				try
+				{
+					std::ifstream jsonInput(tempJsonPath / "plugin.json");
+					auto json_parsed = nlohmann::json::parse(jsonInput);
+					result = json_parsed;
+				}
+				catch (...)
+				{
+				}
 
-				jsonResult.assign((std::istreambuf_iterator<char>(jsonInput)),
-					std::istreambuf_iterator<char>());
 			}
-			std::filesystem::remove(tempJson / "plugin.json");
+			std::filesystem::remove(tempJsonPath / "plugin.json");
 		}
 		if (!exists(fullPath.parent_path())) // parent folder doesn't exist
 		{
@@ -399,23 +398,24 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 		}
 		else
 		{
-			if (fullPath.extension() == ".dll")
+			if (fullPath.extension() == ".dll" && fullPath.parent_path() == extractDir / "plugins")
 			{
-				dllName = fullPath.stem().string();
-
-				std::string tempDllName = dllName;
-				if (!has_suffix(tempDllName, ".dll"))
+				auto dllName = fullPath.stem().string();
+				if (!pluginJsonFound)
 				{
-					tempDllName += ".dll";
-				}
-				std::string dllNameLower = tempDllName;
-				std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
-				auto pth = GetAbsolutePath("plugins/" + tempDllName);
-				fileAlreadyExists = exists(pth);
-				cvarManager->log("Checking file " + ws2s(pth.wstring()) + ": " + std::to_string(fileAlreadyExists));
-				if (auto a = allPlugins.find(dllNameLower); a != allPlugins.end())
-				{
-					pluginIsLoaded = a->second.loaded;
+					result.dll = dllName;
+					result.already_exists = exists(fullPath);
+					std::string dllNameLower = result.dll + ".dll";
+					std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
+					// Update the list to make sure the loaded attributes are up to date (might not be needed?)
+					OnPluginListUpdated({});
+					if (auto it = allPlugins.find(dllNameLower); it != allPlugins.end())
+					{
+							result.was_loaded = it->second.loaded;
+					}else
+					{
+						result.was_loaded = false;
+					}
 				}
 				
 				cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
@@ -423,15 +423,7 @@ std::string PluginManager::InstallZip(std::filesystem::path path)
 			file.extract(member, extractDir);
 		}
 	}
-	if (!pluginJsonFound)
-	{
-		if (!has_suffix(dllName, ".dll"))
-		{
-			dllName = dllName + ".dll";
-		}
-		return "{ \"dll\": \"" + dllName + "\", \"was_loaded\": " + (pluginIsLoaded ? "true" : "false") + ", \"already_exists\": " + (fileAlreadyExists ? "true" : "false") + " }";
-	}
-	return jsonResult;
+	return result;
 }
 
 void PluginManager::CreateBPMJson()
@@ -553,39 +545,33 @@ void PluginManager::CheckForPluginUpdates()
 										try {
 											cvarManager->executeCommand("writeconfig;");
 											cvarManager->log("Installing zip " + ws2s(file_location));
-											std::string installResult = InstallZip(file_location);
+											auto installResult = InstallZip(file_location);
 											cvarManager->log("Install done, deleting zip");
 											int result = _wremove(file_location.c_str());
 											cvarManager->log("Install zip delete result = " + std::to_string(result));
 
 											
 											std::string err;
-											auto jsonVal = json::parse(installResult);
-											if (err.size() == 0)
+											//auto jsonVal = json::parse(installResult);
+											if (!installResult.dll.empty())
 											{
-												if (jsonVal.is_object())
+												std::string dllName = installResult.dll;
+												if (dllName.substr(dllName.size() - std::string(".dll").size()) == ".dll") // Remove extension if it is there
 												{
-													if (jsonVal.find("dll") != jsonVal.end())
-													{
-														std::string dllName = jsonVal["dll"];
-														if (dllName.substr(dllName.size() - std::string(".dll").size()).compare(".dll") == 0)
-														{
-															dllName = dllName.substr(0, dllName.rfind('.'));
-														}
-														cvarManager->log("Install result: " + installResult);
-														//If file did not already exist -> new install -> so auto load
-														//if file did already exist, ensure it was loaded before. Only if thats the case load it again
-														if (!jsonVal.value("already_exists", false) || jsonVal.value("was_loaded", true))
-														{
-															cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
-														}
-														else
-														{
-															cvarManager->log("Not loading plugin " + dllName + " because it was disabled!");
-														}
-														
-													}
+													dllName = dllName.substr(0, dllName.rfind('.'));
 												}
+												cvarManager->log("Install result: " + json(installResult).dump());
+												//If file did not already exist -> new install -> so auto load
+												//if file did already exist, ensure it was loaded before. Only if thats the case load it again
+												if (!installResult.already_exists || installResult.was_loaded)
+												{
+													cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
+												}
+												else
+												{
+													cvarManager->log("Not loading plugin " + dllName + " because it was disabled!");
+												}
+														
 											}
 											else
 											{

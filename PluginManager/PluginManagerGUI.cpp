@@ -53,29 +53,21 @@ void PluginManager::Render()
 
 	if (fileDialog.HasSelected())
 	{
-		//cvarManager->log(.string());
+		//Should this (and the sleep 1; exec config) only be run if there was a successful install? 
 		cvarManager->executeCommand("writeconfig;");
-		std::string installedPlugin = InstallZip(fileDialog.GetSelected());
-		std::string err = "";
-		auto jsonVal = json::parse(installedPlugin);
-		if (err.size() == 0)
+		auto installedPlugin = InstallZip(fileDialog.GetSelected());
+		if (!installedPlugin.dll.empty())
 		{
-			if (jsonVal.is_object())
+			std::string dllName = installedPlugin.dll;
+			if (dllName.substr(dllName.size() - std::string(".dll").size()) == ".dll")
 			{
-				if (jsonVal.find("dll") != jsonVal.end())
-				{
-					std::string dllName = jsonVal["dll"];
-					if (dllName.substr(dllName.size() - std::string(".dll").size()).compare(".dll") == 0)
-					{
-						dllName = dllName.substr(0, dllName.rfind('.'));
-					}
-					cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
-				}
+				dllName = dllName.substr(0, dllName.rfind('.'));
 			}
+			cvarManager->executeCommand("sleep 1; plugin load " + dllName + "; writeplugins;cl_settings_refreshplugins;");
 		}
 		else
 		{
-			cvarManager->log("Error " + err);
+			cvarManager->log("Error installing from zip");
 		}
 		cvarManager->executeCommand("sleep 1; exec config;");
 		fileDialog.ClearSelected();

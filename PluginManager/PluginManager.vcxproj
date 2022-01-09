@@ -150,6 +150,7 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="PluginManager.h" />
+    <ClInclude Include="Serialization.h" />
     <ClInclude Include="SettingsManager.h" />
   </ItemGroup>
   <ItemGroup>
