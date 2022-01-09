@@ -77,7 +77,7 @@ void PluginManager::Render()
 		{
 			cvarManager->log("Error " + err);
 		}
-		cvarManager->executeCommand("exec config;");
+		cvarManager->executeCommand("sleep 1; exec config;");
 		fileDialog.ClearSelected();
 	}
 	static char buf[256];
