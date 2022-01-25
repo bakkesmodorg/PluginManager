@@ -7,6 +7,8 @@
 #include "bakkesmod\plugin\pluginwindow.h"
 #include "bakkesmod\wrappers\UniqueIDWrapper.h"
 
+#include "Serialization.h"
+
 struct PluginEntry
 {
 	std::string dllName;
@@ -82,7 +84,7 @@ public:
 	Extracts the plugin, trusts the developer packaged correctly and doesn't overwrite existing file.
 	Returns the contents of plugin.json
 	*/
-	std::string InstallZip(std::filesystem::path path);
+	PluginInstallResult InstallZip(std::filesystem::path path);
 
 	/*
 	Overwrites/creates bpm.json with default data
