@@ -24,6 +24,14 @@ static inline std::string ws2s(const std::wstring& wstr)
 }
 static inline unsigned int split(const std::string &txt, std::vector<std::string> &strs, char ch);
 
+static inline bool isNumber(const std::string& str)
+{
+	for (char const& c : str) {
+		if (std::isdigit(c) == 0) return false;
+	}
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	RegisterySettingsManager settings;
@@ -116,6 +124,7 @@ int main(int argc, char *argv[])
 		split(params.at(1), ids, ',');
 		for (std::string id : ids)
 		{
+			if (!isNumber(id)) continue;
 #ifdef _WIN32
 			INT rc;
 			WSADATA wsaData;
