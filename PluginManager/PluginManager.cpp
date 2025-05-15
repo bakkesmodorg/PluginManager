@@ -556,7 +556,7 @@ void PluginManager::CheckForPluginUpdates()
 											if (!installResult.dll.empty())
 											{
 												std::string dllName = installResult.dll;
-												if (dllName.substr(dllName.size() - std::string(".dll").size()) == ".dll") // Remove extension if it is there
+												if (dllName.size() > 4 && dllName.substr(dllName.size() - std::string(".dll").size()) == ".dll") // Remove extension if it is there
 												{
 													dllName = dllName.substr(0, dllName.rfind('.'));
 												}
