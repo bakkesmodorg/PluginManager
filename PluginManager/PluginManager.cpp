@@ -394,34 +394,31 @@ PluginInstallResult PluginManager::InstallZip(std::filesystem::path path)
 		}
 		if (!exists(fullPath.parent_path())) // parent folder doesn't exist
 		{
-			create_directories(fullPath);
+			create_directories(fullPath.parent_path());
 		}
-		else
+		if (fullPath.extension() == ".dll" && fullPath.parent_path() == extractDir / "plugins")
 		{
-			if (fullPath.extension() == ".dll" && fullPath.parent_path() == extractDir / "plugins")
+			auto dllName = fullPath.stem().string();
+			if (!pluginJsonFound)
 			{
-				auto dllName = fullPath.stem().string();
-				if (!pluginJsonFound)
+				result.dll = dllName;
+				result.already_exists = exists(fullPath);
+				std::string dllNameLower = result.dll + ".dll";
+				std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
+				// Update the list to make sure the loaded attributes are up to date (might not be needed?)
+				OnPluginListUpdated({});
+				if (auto it = allPlugins.find(dllNameLower); it != allPlugins.end())
 				{
-					result.dll = dllName;
-					result.already_exists = exists(fullPath);
-					std::string dllNameLower = result.dll + ".dll";
-					std::transform(dllNameLower.begin(), dllNameLower.end(), dllNameLower.begin(), ::tolower);
-					// Update the list to make sure the loaded attributes are up to date (might not be needed?)
-					OnPluginListUpdated({});
-					if (auto it = allPlugins.find(dllNameLower); it != allPlugins.end())
-					{
-							result.was_loaded = it->second.loaded;
-					}else
-					{
-						result.was_loaded = false;
-					}
+						result.was_loaded = it->second.loaded;
+				}else
+				{
+					result.was_loaded = false;
 				}
-				
-				cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
 			}
-			file.extract(member, extractDir);
+			
+			cvarManager->executeCommand("plugin unload " + dllName); //Plugin might already be installed and user is installing new version
 		}
+		file.extract(member, extractDir);
 	}
 	return result;
 }
